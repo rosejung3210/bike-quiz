@@ -140,6 +140,8 @@ footer{margin-top:28px;font-size:13px;color:var(--muted)}footer .copy{margin:8px
 .fbrow[hidden],.fbta[hidden],.fbbox[hidden],.fbmsg[hidden]{display:none}
 body{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}img,svg{-webkit-user-drag:none;user-drag:none}
 @media print{body>*{display:none!important}body::before{content:'이 사이트의 문제와 해설은 인쇄할 수 없습니다. ⓒ 2026 장미정';display:block;padding:40px;font-size:18px;color:#000}}
+
+.gshot{margin:14px 0 4px}.gshot svg{display:block;width:100%;max-width:320px;height:auto}.gshot figcaption{font-size:13px;color:var(--muted);margin-top:4px}.gfile{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}.gup,.gin{display:block;width:100%;box-sizing:border-box;margin-top:12px;cursor:pointer}.gup.busy{opacity:.6;pointer-events:none}.gfile:focus+.gup{outline:2px solid var(--accent);outline-offset:2px}.gin:disabled{opacity:.45;cursor:default}.gmsg.good{color:var(--ok);font-weight:600}.gres{list-style:none;margin:8px 0 0;padding:0}.rev.gate ul.gres li{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;margin:4px 0;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.rev.gate ul.gres li.ok b{color:var(--ok)}.rev.gate ul.gres li.no b{color:var(--bad)}.gres[hidden],.galt[hidden]{display:none}.glink{border:0;background:none;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
 </style>
 </head>
 <body>
@@ -357,6 +359,19 @@ function records(){
   }
   window.scrollTo(0,0);
 }
+var OCR_BASE='https://rosejung3210.github.io/bike-quiz/ocr/', ocrW=null;
+function loadScript(src){ return new Promise(function(res,rej){ var sc=document.createElement('script'); sc.src=src; sc.onload=function(){ res(); }; sc.onerror=function(){ rej(new Error('script')); }; document.head.appendChild(sc); }); }
+function ocrWorker(){ if(ocrW) return Promise.resolve(ocrW);
+  return (window.Tesseract?Promise.resolve():loadScript(OCR_BASE+'tesseract.min.js')).then(function(){ return window.Tesseract.createWorker('kor',1,{workerPath:OCR_BASE+'worker.min.js',corePath:OCR_BASE,langPath:OCR_BASE,gzip:true}); }).then(function(w){ ocrW=w; return w; }); }
+function prepImage(file){ return new Promise(function(res,rej){ var img=new Image(), u=URL.createObjectURL(file);
+  img.onload=function(){ var w=img.naturalWidth,h=img.naturalHeight,sc=1; if(w<900) sc=Math.min(3,900/w); if(w*sc>1800) sc=1800/w;
+    var c=document.createElement('canvas'); c.width=Math.round(w*sc); c.height=Math.round(h*sc); var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.imageSmoothingQuality='high'; x.drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c); };
+  img.onerror=function(){ URL.revokeObjectURL(u); rej(new Error('image')); }; img.src=u; }); }
+function checkCapture(text){ var t=String(text||'').replace(/\s+/g,''), r={posts:null,grade:null,newbie:false};
+  var m=t.match(/(?:게시글|작성글|작성한글|쓴글)[^\d]{0,3}(\d[\d,]*)/); if(m) r.posts=parseInt(m[1].replace(/,/g,''),10);
+  var g=t.match(/(일반|성실|열심|우수|감사).?[멤엠맴].?버|부매니저|매니저|스탭|스태프/); if(g) r.grade=g[1]?g[1]+'멤버':g[0];
+  r.newbie=!r.grade&&(/새[싹쌍쌈싸]|[멤엠맴]버/.test(t)||/[가-힣]{2,}등급안내/.test(t)); r.ok=(r.posts>=1)&&!!r.grade; return r; }
+window.__rjCheck=checkCapture;
 function gate(){
   homeBody(true);
   var wrap=el('div','gatewrap'), box=el('div','gatebox'); wrap.appendChild(box);
@@ -365,16 +380,34 @@ function gate(){
   else { var tu=el('section','rev trial'); tu.appendChild(el('b',null,'맛보기 5문제를 모두 풀었습니다')); tu.appendChild(el('p','lead','6번째 문제부터는 카페에 가입해야 풀 수 있습니다.')); box.appendChild(tu); }
   c.appendChild(el('h2',null,'네이버 카페 회원 전용 문제풀이'));
   c.appendChild(el('p','lead','이륜자동차 정비기능사 카페에 가입하면 1,400여 문제를 무료로 풀 수 있습니다. 오답분석, 문제해설, 문제 읽어 주기까지 모두 이용할 수 있습니다.'));
-  var ol=el('ol','gsteps'); ['아래 버튼을 눌러 카페에 가입합니다.','카페 공지사항에서 입장 코드를 확인합니다.','아래 칸에 코드를 넣으면 바로 문제를 풀 수 있습니다.'].forEach(function(x){ ol.appendChild(el('li',null,x)); }); c.appendChild(ol);
+  var ol=el('ol','gsteps'); ['카페에 가입하고 가입인사 글을 씁니다.','카페에서 "나의활동"을 엽니다. 등급이 일반멤버 이상이고 "내가 쓴 게시글"이 1개 이상이어야 합니다.','그 화면을 캡처해 아래에 올립니다.','확인되면 "입장하기"를 누릅니다.'].forEach(function(x){ ol.appendChild(el('li',null,x)); }); c.appendChild(ol);
   var a=document.createElement('a'); a.className='btn pri gbtn'; a.href=CAFE_URL; a.target='_blank'; a.rel='noopener'; a.textContent='네이버 카페 가입하러 가기'; c.appendChild(a);
-  var row=el('div','grow'); var inp=document.createElement('input'); inp.type='text'; inp.placeholder='입장 코드'; inp.autocomplete='off'; inp.setAttribute('aria-label','입장 코드');
-  var ok=el('button','btn','입장하기'); ok.type='button'; var msg=el('p','gmsg','');
-  function tryIn(){ var v=(inp.value||'').replace(/\s+/g,'').toLowerCase(); var h=codeHash(v);
-    if(GATE_HASH.indexOf(h)>=0){ try{ localStorage.setItem('rj_ok',String(h)); }catch(e){ window.__rjok=1; } if(!fromHash()) home(); }
-    else { msg.textContent='코드가 맞지 않습니다. 카페 공지사항에서 다시 확인해 주세요.'; } }
-  ok.addEventListener('click',tryIn); inp.addEventListener('keydown',function(e){ if(e.key==='Enter') tryIn(); });
-  row.appendChild(inp); row.appendChild(ok); c.appendChild(row); c.appendChild(msg);
-  c.appendChild(el('p','gnote','한 번 입력하면 이 기기에서는 다시 묻지 않습니다.'));
+  var eg=document.createElement('figure'); eg.className='gshot'; eg.innerHTML='<svg viewBox="0 0 300 150" role="img" aria-label="나의활동 화면 예시"><rect x="1" y="1" width="298" height="148" rx="8" fill="#fff" stroke="#c9d0da"/><text x="70" y="24" font-size="13" fill="#8a94a3">카페정보</text><text x="180" y="24" font-size="13" font-weight="700" fill="#1c2430">나의활동</text><line x1="14" y1="36" x2="286" y2="36" stroke="#e3e7ee"/><text x="22" y="62" font-size="13" fill="#1c2430">일반멤버</text><text x="278" y="62" font-size="12" fill="#8a94a3" text-anchor="end">등급 안내</text><text x="22" y="88" font-size="13" fill="#1c2430">방문</text><text x="278" y="88" font-size="13" fill="#1c2430" text-anchor="end">3회</text><text x="22" y="114" font-size="13" fill="#1c2430">내가 쓴 게시글</text><text x="278" y="114" font-size="13" fill="#1c2430" text-anchor="end">1개</text><text x="22" y="138" font-size="13" fill="#1c2430">내가 쓴 댓글</text><text x="278" y="138" font-size="13" fill="#1c2430" text-anchor="end">0개</text><rect x="14" y="46" width="272" height="24" rx="3" fill="none" stroke="#d92d20" stroke-width="2"/><rect x="14" y="98" width="272" height="24" rx="3" fill="none" stroke="#d92d20" stroke-width="2"/></svg>';
+  eg.appendChild(el('figcaption',null,'예시 그림. 빨간 칸 두 줄이 함께 보이게 캡처해 주세요.')); c.appendChild(eg);
+  var fi=document.createElement('input'); fi.type='file'; fi.accept='image/*'; fi.id='gfile'; fi.className='gfile';
+  var lab=document.createElement('label'); lab.className='btn gbtn gup'; lab.setAttribute('for','gfile'); lab.textContent='인증샷 올리기'; c.appendChild(fi); c.appendChild(lab);
+  var msg=el('p','gmsg',''); c.appendChild(msg);
+  var res=el('ul','gres'); res.hidden=true; c.appendChild(res);
+  var ok=el('button','btn pri gbtn gin','입장하기'); ok.type='button'; ok.disabled=true; c.appendChild(ok);
+  function enter(){ try{ localStorage.setItem('rj_ok',String(GATE_HASH[0])); }catch(e){ window.__rjok=1; } if(!fromHash()) home(); }
+  ok.addEventListener('click',function(){ if(!ok.disabled) enter(); });
+  var fails=0, alt=el('p','gnote galt'); alt.hidden=true; c.appendChild(alt);
+  function say(txt,good){ msg.textContent=txt; msg.className='gmsg'+(good?' good':''); }
+  function line(lbl,val,pass){ var li=el('li',pass?'ok':'no'); li.appendChild(el('span',null,lbl)); li.appendChild(el('b',null,val)); res.appendChild(li); }
+  function failed(){ fails++; if(fails>=2&&alt.hidden){ alt.hidden=false; alt.appendChild(document.createTextNode('글자가 선명하게 보이도록 화면을 확대해 캡처하면 잘 읽힙니다. 계속 안 되면 ')); var lk=el('button','glink','입장 코드로 들어가기'); lk.type='button'; alt.appendChild(lk);
+      lk.addEventListener('click',function(){ if(c.querySelector('.grow')) return; var row=el('div','grow'); var inp=document.createElement('input'); inp.type='text'; inp.placeholder='입장 코드'; inp.autocomplete='off'; inp.setAttribute('aria-label','입장 코드'); var go=el('button','btn','확인'); go.type='button';
+        function tryIn(){ var v=(inp.value||'').replace(/\s+/g,'').toLowerCase(); if(GATE_HASH.indexOf(codeHash(v))>=0) enter(); else say('코드가 맞지 않습니다. 카페에 문의해 주세요.'); }
+        go.addEventListener('click',tryIn); inp.addEventListener('keydown',function(e){ if(e.key==='Enter') tryIn(); }); row.appendChild(inp); row.appendChild(go); c.appendChild(row); inp.focus(); }); } }
+  fi.addEventListener('change',function(){ var f=fi.files&&fi.files[0]; if(!f) return; ok.disabled=true; res.hidden=true; res.textContent=''; say('사진을 읽고 있습니다. 처음에는 10초쯤 걸릴 수 있습니다.',true); lab.classList.add('busy');
+    prepImage(f).then(function(cv){ return ocrWorker().then(function(w){ return w.recognize(cv); }); }).then(function(out){
+      lab.classList.remove('busy'); fi.value=''; var raw=out&&out.data&&out.data.text; window.__rjLast=raw; var r=checkCapture(raw); res.hidden=false;
+      line('등급', r.grade?r.grade:(r.newbie?'일반멤버 아님':'읽지 못함'), !!r.grade);
+      line('내가 쓴 게시글', r.posts==null?'읽지 못함':r.posts+'개', r.posts>=1);
+      if(r.ok){ say('확인되었습니다. 입장하기를 눌러 주세요.',true); ok.disabled=false; ok.focus(); }
+      else { failed(); if(!r.grade&&r.newbie) say('등급이 아직 일반멤버가 아닙니다. 일반멤버가 된 뒤 다시 올려 주세요.'); else if(r.posts===0) say('게시글이 0개입니다. 가입인사를 쓴 뒤 다시 올려 주세요.'); else say('등급과 "내가 쓴 게시글"이 함께 보이도록 다시 캡처해 주세요.'); }
+    }).catch(function(){ lab.classList.remove('busy'); fi.value=''; failed(); say('사진을 읽지 못했습니다. 인터넷 연결을 확인하고 다시 올려 주세요.'); });
+  });
+  c.appendChild(el('p','gnote','올린 사진은 이 기기 안에서만 읽습니다. 어디에도 저장하거나 보내지 않습니다. 한 번 확인되면 이 기기에서는 다시 묻지 않습니다.'));
   box.appendChild(c); app.appendChild(wrap); app.classList.add('locked');
 }
 function home(){ if(!unlocked()){ gate(); return; } homeBody(false); }
