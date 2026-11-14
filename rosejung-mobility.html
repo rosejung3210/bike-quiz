@@ -401,7 +401,7 @@ function renderResult(){
     r.appendChild(ol);
     if(q.e){
       var det=(typeof q.e==='string')?q.e:q.e.d;
-      if(q.e.w){ var wx=el('div','exp wrong'); wx.appendChild(el('b',null,'[오답풀이]')); var wi=0;
+      if(q.e.w){ var wx=el('div','exp wrong'); wx.appendChild(el('b',null,'[오답분석]')); var wi=0;
         q.o.forEach(function(_,k){ if(k===q.a) return; var pw=el('p'); pw.appendChild(el('span','mk',CIRC[k]+' ')); pw.appendChild(document.createTextNode(q.e.w[wi]||'')); wi++; wx.appendChild(pw); });
         r.appendChild(wx); }
       var ex=el('div','exp'); ex.appendChild(el('b',null,'[문제해설]')); ex.appendChild(el('p',null,det)); if(q.e.g&&FIG[q.e.g]){ var fg=document.createElement('figure'); fg.className='fig'; fg.innerHTML=FIG[q.e.g].s; fg.appendChild(el('figcaption',null,FIG[q.e.g].c)); ex.appendChild(fg); } r.appendChild(ex);
