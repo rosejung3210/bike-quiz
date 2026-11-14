@@ -203,12 +203,59 @@ var S=null, timer=null;
 var canSpeak=('speechSynthesis' in window)&&('SpeechSynthesisUtterance' in window);
 var autoRead=false; try{ autoRead=localStorage.getItem('quiz-tts')==='1'; }catch(e){}
 function stopSpeak(){ if(canSpeak){ try{ window.speechSynthesis.cancel(); }catch(e){} } }
+var SINO=['영','일','이','삼','사','오','육','칠','팔','구'];
+function sinoInt(s){
+  s=s.replace(/^0+(?=\d)/,''); var n=parseInt(s,10); if(!n) return '영';
+  if(s.length>12) return s.split('').map(function(d){return SINO[+d];}).join('');
+  function four(k){ var r='',u=['','십','백','천'],d=String(k).split('').reverse();
+    for(var i=d.length-1;i>=0;i--){ var v=+d[i]; if(!v) continue; r+=(v===1&&i>0?'':SINO[v])+u[i]; } return r; }
+  var out='',eok=Math.floor(n/100000000),man=Math.floor(n%100000000/10000),rest=n%10000;
+  if(eok) out+=four(eok)+'억'; if(man) out+=(man===1?'':four(man))+'만'; if(rest) out+=four(rest); return out;
+}
+function sinoNum(s){
+  s=s.replace(/,/g,''); var p=s.split('.');
+  if(p.length===1){ return (/^0\d/.test(s))?s.split('').map(function(d){return SINO[+d];}).join(''):sinoInt(s); }
+  return sinoInt(p[0])+' 점 '+p[1].split('').map(function(d){return SINO[+d];}).join('');
+}
+var NAT1=['','한','두','세','네','다섯','여섯','일곱','여덟','아홉'],NAT10=['','열','스물','서른','마흔','쉰','예순','일흔','여든','아흔'];
+function natNum(n){ if(n===20) return '스무'; return NAT10[Math.floor(n/10)]+NAT1[n%10]; }
+var UNIT={'kgf':'킬로그램포스','kg':'킬로그램','km':'킬로미터','kWh':'킬로와트아워','kW':'킬로와트','kPa':'킬로파스칼','kcal':'킬로칼로리','kJ':'킬로줄',
+ 'mmHg':'밀리미터 수은주','cmHg':'센티미터 수은주','mm':'밀리미터','cm':'센티미터','cc':'시시','cd':'칸델라','cal':'칼로리','dB(A)':'디비','dB':'디비',
+ 'rpm':'알피엠','ppm':'피피엠','psi':'피에스아이','bar':'바','sec':'초','Lux':'럭스','Lx':'럭스','PS':'마력','ps':'마력','Ah':'암페어아워','Wh':'와트아워',
+ 'mA':'밀리암페어','Hz':'헤르츠','mile':'마일','lbf':'파운드포스','lb':'파운드','ft':'피트','m':'미터','g':'그램','s':'초','h':'시간','L':'리터','ℓ':'리터',
+ 'V':'볼트','A':'암페어','W':'와트','N':'뉴턴','J':'줄','K':'켈빈','Ω':'옴','℃':'도','°F':'도','°':'도','˚':'도','%':'퍼센트','％':'퍼센트',
+ '㎠':'제곱센티미터','㎤':'세제곱센티미터','㎜':'밀리미터','㎝':'센티미터','㎏':'킬로그램','㎡':'제곱미터','㎥':'세제곱미터','㎞':'킬로미터'};
+var UKEYS=Object.keys(UNIT).sort(function(a,b){return b.length-a.length;});
+var UATOM=UKEYS.map(function(k){return k.replace(/[()°]/g,'\\$&');}).join('|');
+var UNIT_RE=new RegExp('(\\d[\\d,]*(?:\\.\\d+)?)\\s?((?:'+UATOM+')(?:[/·](?:'+UATOM+'))*)(2(?![\\d.])|²)?(?![A-Za-z])','g');
+var ATOM_RE=new RegExp('([/·])?('+UATOM+')','g');
+var COUNTER='개(?!월|소|정|폐)|가지|배(?!기|터|출|선|전|압)|장(?!치|착|행|력)|명|곳|바퀴|겹|줄(?!이)|군데|쌍|번째';
+function ko(t){
+  t=String(t).replace(/[①②③④]/g,function(c){return ' '+SINO['①②③④'.indexOf(c)+1]+' 번 ';});
+  t=t.replace(/-(\d[\d.]*)\s?(℃|°F)/g,'영하 $1$2');
+  t=t.replace(/\b\d(?:-\d)+\b/g,function(m){return m.replace(/-/g,' ');});
+  t=t.replace(/(\d)\s*[~∼]\s*(?=\d)/g,'$1 에서 ');
+  t=t.replace(/(\d)\s*[:：]\s*(?=\d)/g,'$1 대 ');
+  t=t.replace(UNIT_RE,function(_,num,unit,sq){
+    var u=unit.replace(ATOM_RE,function(__,sep,a){ var r=UNIT[a];
+      if(sep==='/'){ if(a==='s'||a==='sec') r='세컨드'; if(a==='h') r='아워'; return ' 퍼 '+r; } return (sep?' ':'')+r; });
+    return sinoNum(num)+' '+u+(sq?' 제곱':'')+' ';
+  });
+  t=t.replace(new RegExp('(^|[^\\d.,])(\\d{1,2})\\s?('+COUNTER+')','g'),function(_,pre,n,c){ n=+n;
+    if(n<1) return pre+'영 '+c; if(c==='번째'&&n===1) return pre+'첫 번째'; return pre+natNum(n)+' '+c; });
+  t=t.replace(/\d[\d,]*(?:\.\d+)?/g,function(m){return sinoNum(m);});
+  t=t.replace(/²/g,' 제곱').replace(/³/g,' 세제곱').replace(/×/g,' 곱하기 ').replace(/÷/g,' 나누기 ').replace(/\s=\s/g,' 는 ').replace(/\s\+\s/g,' 더하기 ').replace(/\s-\s/g,' 빼기 ');
+  t=t.replace(/㎠/g,'제곱센티미터').replace(/㎤/g,'세제곱센티미터').replace(/㎜/g,'밀리미터').replace(/℃/g,'도').replace(/[%％]/g,'퍼센트').replace(/Ω/g,'옴');
+  t=t.replace(/육월/g,'유월').replace(/(^|[^가-힣])십월/g,'$1시월');
+  return t.replace(/\s+([,.])/g,'$1').replace(/\s{2,}/g,' ');
+}
+
 function speakQ(){
   if(!canSpeak||!S) return; stopSpeak();
   var q=S.qs[S.cur];
-  var text='문제 '+(S.cur+1)+'번. '+q.q+' ';
-  if(q.x) text+='보기. '+q.x.join('. ')+'. ';
-  q.o.forEach(function(o,i){ text+=(i+1)+'번. '+o+'. '; });
+  var text='문제 '+sinoInt(String(S.cur+1))+' 번. '+ko(q.q)+' ';
+  if(q.x) text+='보기. '+ko(q.x.join('. '))+'. ';
+  q.o.forEach(function(o,i){ text+=SINO[i+1]+' 번. '+ko(o).replace(/[.\s]+$/,'')+'. '; });
   try{ var u=new SpeechSynthesisUtterance(text); u.lang='ko-KR'; u.rate=0.95; window.speechSynthesis.speak(u); }catch(e){}
 }
 
