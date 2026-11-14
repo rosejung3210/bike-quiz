@@ -253,10 +253,12 @@ function ko(t){
 function speakQ(){
   if(!canSpeak||!S) return; stopSpeak();
   var q=S.qs[S.cur];
-  var text='문제 '+sinoInt(String(S.cur+1))+' 번. '+ko(q.q)+' ';
-  if(q.x) text+='보기. '+ko(q.x.join('. '))+'. ';
-  q.o.forEach(function(o,i){ text+=SINO[i+1]+' 번. '+ko(o).replace(/[.\s]+$/,'')+'. '; });
-  try{ var u=new SpeechSynthesisUtterance(text); u.lang='ko-KR'; u.rate=0.95; window.speechSynthesis.speak(u); }catch(e){}
+  function say(t,quiet){ try{ var u=new SpeechSynthesisUtterance(t); u.lang='ko-KR'; u.rate=quiet?1:0.95; if(quiet) u.volume=0; window.speechSynthesis.speak(u); }catch(e){} }
+  function rest(){ say('아아',true); }
+  say('문제 '+sinoInt(String(S.cur+1))+' 번.'); rest();
+  say(ko(q.q)); rest();
+  if(q.x){ say('보기.'); say(ko(q.x.join('. '))); rest(); }
+  q.o.forEach(function(o,i){ say(SINO[i+1]+' 번.'); say(ko(o).replace(/[.\s]+$/,'')+'.'); rest(); });
 }
 
 function home(){
