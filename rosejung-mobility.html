@@ -111,6 +111,7 @@ h2::after{content:"";flex:1;border-top:1px solid var(--line)}
 .fb{display:inline-block;margin-top:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;color:var(--muted);text-decoration:none;background:var(--surface)}.fb:hover{color:var(--accent);border-color:var(--accent)}
 .gate h2{margin:0 0 8px}.rev.gate ol.gsteps{margin:10px 0 14px;padding-left:24px;list-style:decimal}.rev.gate ol.gsteps li{display:list-item;list-style:decimal;margin:2px 0;padding:0;border:0;background:none}.gbtn{display:inline-block;text-decoration:none;text-align:center}.grow{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.grow input{flex:1;min-width:150px;padding:10px 12px;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}.gmsg{color:var(--bad);min-height:1.2em;margin:8px 0 0}.gnote{color:var(--muted);font-size:13px;margin:4px 0 0}
 .ubox b,.trial b{display:block;margin-bottom:4px}.trial{border-color:var(--accent)}.rtab{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}.rtab th,.rtab td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}.rtab th{color:var(--muted);font-weight:600}.wlist{list-style:none;margin:10px 0 0;padding:0}.rev .wlist li{display:block;padding:8px 0;border-bottom:1px solid var(--line);border-radius:0}.wlist .wq{display:block}.wlist .wc{display:block;color:var(--bad);font-size:13px;margin-top:2px}
+#app.locked>*:not(.gatewrap){filter:blur(3px);opacity:.6;pointer-events:none;user-select:none}.gatewrap{position:fixed;inset:0;z-index:60;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:70px 14px 24px;background:rgba(20,30,50,.28)}.gatebox{width:100%;max-width:460px}.gatebox .rev{box-shadow:0 10px 30px rgba(0,0,0,.18)}
 .rev{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:10px}
 .rev .tag{font-size:12.5px;font-weight:700;border-radius:4px;padding:2px 8px;margin-left:8px}
 .rev .tag.ok{background:var(--ok-soft);color:var(--ok)} .rev .tag.no{background:var(--bad-soft);color:var(--bad)}
@@ -324,7 +325,7 @@ function userBox(){
 }
 function records(){
   var u=getUser(); if(!u){ home(); return; }
-  stopSpeak(); S=null; clearInterval(timer); homeBtn.hidden=false; app.textContent='';
+  stopSpeak(); S=null; clearInterval(timer); homeBtn.hidden=false; app.textContent=''; app.classList.remove('locked');
   var r=loadRec(u), s=recSum(r);
   var st=el('div','status'); st.appendChild(el('b',null,u.nick+' ('+u.id+') 님의 기록')); app.appendChild(st);
   var c1=el('section','rev'); c1.appendChild(el('b',null,'전체')); c1.appendChild(el('p',null,s.n? (r.s.length+'번 풀이 · '+s.n+'문제 · 맞힌 문제 '+s.c+'개 · 정답률 '+scoreOf(s.c,s.n)+'%') : '아직 푼 기록이 없습니다.')); app.appendChild(c1);
@@ -353,10 +354,11 @@ function records(){
   window.scrollTo(0,0);
 }
 function gate(){
-  stopSpeak(); S=null; clearInterval(timer); homeBtn.hidden=true; app.textContent='';
+  homeBody(true);
+  var wrap=el('div','gatewrap'), box=el('div','gatebox'); wrap.appendChild(box);
   var c=el('section','rev gate');
-  if(!trialUsed()){ var tr0=el('section','rev trial'); tr0.appendChild(el('b',null,'처음 오셨나요?')); tr0.appendChild(el('p','lead','가입 전에 5문제를 먼저 풀어 볼 수 있습니다. 6번째 문제부터는 카페에 가입해야 풀 수 있습니다.')); var tb0=el('button','btn pri','5문제 먼저 풀어 보기'); tb0.type='button'; tb0.addEventListener('click',startTrial); tr0.appendChild(tb0); app.appendChild(tr0); }
-  else { app.appendChild(el('p','lead','맛보기 5문제를 모두 풀었습니다. 6번째 문제부터는 카페에 가입해야 풀 수 있습니다.')); }
+  if(!trialUsed()){ var tr0=el('section','rev trial'); tr0.appendChild(el('b',null,'처음 오셨나요?')); tr0.appendChild(el('p','lead','가입 전에 5문제를 먼저 풀어 볼 수 있습니다. 6번째 문제부터는 카페에 가입해야 풀 수 있습니다.')); var tb0=el('button','btn pri','5문제 먼저 풀어 보기'); tb0.type='button'; tb0.addEventListener('click',startTrial); tr0.appendChild(tb0); box.appendChild(tr0); }
+  else { var tu=el('section','rev trial'); tu.appendChild(el('b',null,'맛보기 5문제를 모두 풀었습니다')); tu.appendChild(el('p','lead','6번째 문제부터는 카페에 가입해야 풀 수 있습니다.')); box.appendChild(tu); }
   c.appendChild(el('h2',null,'네이버 카페 회원 전용 문제풀이'));
   c.appendChild(el('p','lead','이륜자동차 정비기능사 카페에 가입하면 1,400여 문제를 무료로 풀 수 있습니다. 오답분석, 문제해설, 문제 읽어 주기까지 모두 이용할 수 있습니다.'));
   var ol=el('ol','gsteps'); ['아래 버튼을 눌러 카페에 가입합니다.','카페 공지사항에서 입장 코드를 확인합니다.','아래 칸에 코드를 넣으면 바로 문제를 풀 수 있습니다.'].forEach(function(x){ ol.appendChild(el('li',null,x)); }); c.appendChild(ol);
@@ -369,12 +371,12 @@ function gate(){
   ok.addEventListener('click',tryIn); inp.addEventListener('keydown',function(e){ if(e.key==='Enter') tryIn(); });
   row.appendChild(inp); row.appendChild(ok); c.appendChild(row); c.appendChild(msg);
   c.appendChild(el('p','gnote','한 번 입력하면 이 기기에서는 다시 묻지 않습니다.'));
-  app.appendChild(c);
+  box.appendChild(c); app.appendChild(wrap); app.classList.add('locked');
 }
-function home(){
-  if(!unlocked()){ gate(); return; }
-  stopSpeak(); S=null; clearInterval(timer); homeBtn.hidden=true; app.textContent='';
-  app.appendChild(userBox());
+function home(){ if(!unlocked()){ gate(); return; } homeBody(false); }
+function homeBody(locked){
+  stopSpeak(); S=null; clearInterval(timer); homeBtn.hidden=true; app.textContent=''; app.classList.remove('locked');
+  if(!locked) app.appendChild(userBox());
   app.appendChild(el('p','lead','풀고 싶은 파트를 누르면 그 파트 문제은행에서 20문제를 무작위로 냅니다.'));
   var g0=el('div','parts'); g0.style.marginTop='14px'; g0.appendChild(card(ALLPART,true)); app.appendChild(g0);
   var groups=[]; BANK.forEach(function(p){ if(groups.indexOf(p.g)<0) groups.push(p.g); });
@@ -405,6 +407,7 @@ function fbUrl(part,q){
 }
 function start(part,qs,mode){
   if(!unlocked()){ if(mode==='trial'&&!trialUsed()){ markTrial(); } else { gate(); return; } }
+  app.classList.remove('locked');
   S={part:part,qs:qs,ans:qs.map(function(){return null;}),cur:0,mode:mode,t0:Date.now(),warn:false};
   homeBtn.hidden=false;
   clearInterval(timer); timer=setInterval(tick,1000);
