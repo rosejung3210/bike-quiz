@@ -368,11 +368,13 @@ document.addEventListener('dragover',function(e){ if(gateOpen()) e.preventDefaul
 document.addEventListener('drop',function(e){ if(!gateOpen()) return; var f=firstImage(e.dataTransfer); if(f){ e.preventDefault(); gateHandle(f); } });
 function loadScript(src){ return new Promise(function(res,rej){ var sc=document.createElement('script'); sc.src=src; sc.onload=function(){ res(); }; sc.onerror=function(){ rej(new Error('script')); }; document.head.appendChild(sc); }); }
 function ocrWorker(){ if(ocrW) return Promise.resolve(ocrW);
-  function make(opts){ return window.Tesseract.createWorker('kor',1,opts); }
-  var first=(window.Tesseract?Promise.resolve():loadScript(OCR_BASE+'tesseract.min.js')).then(function(){ return make({workerPath:OCR_BASE+'worker.min.js',corePath:OCR_BASE,langPath:OCR_BASE,gzip:true,cacheMethod:'none'}); });
-  return first.catch(function(e1){ window.__rjErr1=String(e1&&e1.message||e1);
-    return (window.Tesseract?Promise.resolve():loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js')).then(function(){ return make({cacheMethod:'none'}); });
-  }).then(function(w){ ocrW=w; return w; }); }
+  var bases=[]; try{ if(/^https?:$/.test(location.protocol)) bases.push(new URL('ocr/',location.href.split('#')[0].split('?')[0]).href); }catch(e){}
+  if(bases.indexOf(OCR_BASE)<0) bases.push(OCR_BASE); bases.push('');
+  function attempt(i){ var base=bases[i];
+    var lib=window.Tesseract?Promise.resolve():loadScript(base?base+'tesseract.min.js':'https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js');
+    return lib.then(function(){ return window.Tesseract.createWorker('kor',1,base?{workerPath:base+'worker.min.js',corePath:base,langPath:base,gzip:true,cacheMethod:'none'}:{cacheMethod:'none'}); })
+      .catch(function(e){ window.__rjErr1=(window.__rjErr1||'')+'['+i+'] '+String(e&&e.message||e)+' '; if(i+1<bases.length) return attempt(i+1); throw e; }); }
+  return attempt(0).then(function(w){ ocrW=w; return w; }); }
 function prepImage(file){ return new Promise(function(res,rej){ var img=new Image(), u=URL.createObjectURL(file);
   img.onload=function(){ var w=img.naturalWidth,h=img.naturalHeight,sc=1; if(w<900) sc=Math.min(3,900/w); if(w*sc>1800) sc=1800/w;
     var c=document.createElement('canvas'); c.width=Math.round(w*sc); c.height=Math.round(h*sc); var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.imageSmoothingQuality='high'; x.drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c); };
@@ -417,7 +419,7 @@ function gate(){
       else { failed(); if(!r.grade&&r.newbie) say('등급이 아직 일반멤버가 아닙니다. 일반멤버가 된 뒤 다시 올려 주세요.'); else if(r.posts===0) say('게시글이 0개입니다. 가입인사를 쓴 뒤 다시 올려 주세요.'); else say('등급과 "내가 쓴 게시글"이 함께 보이도록 다시 캡처해 주세요.'); }
     }).catch(function(e){ lab.classList.remove('busy'); fi.value=''; failed(); var why=String(e&&e.message||e||''); var img=(why==='image');
       if(img) say('그림 파일을 열지 못했습니다. 화면을 다시 캡처해 올려 주세요.');
-      else if(location.hostname!=='rosejung3210.github.io') say('이 화면에서는 사진 확인이 동작하지 않습니다. 실제 주소(rosejung3210.github.io/bike-quiz/rosejung-mobility.html)에서 열어 주세요.');
+      else if(location.hostname!=='rosejung3210.github.io') say('이 화면에서는 사진 확인이 동작하지 않을 수 있습니다. 실제 주소(rosejung3210.github.io/bike-quiz/rosejung-mobility.html)에서 열어 주세요.');
       else say('사진 읽기 프로그램을 불러오지 못했습니다. 잠시 뒤 다시 올려 주세요.');
       res.hidden=false; res.textContent=''; var li=el('li','no'); li.appendChild(el('span',null,'오류 내용')); li.appendChild(el('b',null,(why||'알 수 없음').slice(0,80))); res.appendChild(li); });
   }
