@@ -108,7 +108,7 @@ h2::after{content:"";flex:1;border-top:1px solid var(--line)}
 .tabs{display:flex;gap:8px;margin:0 0 10px}
 .tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px}
 .tabs button.on{background:var(--ink);border-color:var(--ink);color:var(--surface)}
-.fb{display:inline-block;margin-top:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;color:var(--muted);text-decoration:none;background:var(--surface)}.fb:hover{color:var(--accent);border-color:var(--accent)}
+.fb{display:inline-block;margin-top:10px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;font-size:14px;color:var(--muted);text-decoration:none;background:var(--surface);cursor:pointer;font-family:inherit}.fb:hover{color:var(--accent);border-color:var(--accent)}.fb:disabled{cursor:default;color:var(--ok);border-color:var(--ok)}.fbbox{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}.fbnote{margin:0 0 8px;font-size:14px;color:var(--muted)}.fbta{display:block;width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:16px;line-height:1.5;resize:vertical;background:var(--paper);color:var(--ink)}.fbta:focus{outline:2px solid var(--accent);outline-offset:1px}.fbrow{display:flex;gap:8px;margin-top:10px}.fbmsg{margin:10px 0 0;font-size:15px}.fbmsg.ok{color:var(--ok)}.fbmsg.bad{color:var(--bad)}
 .gate h2{margin:0 0 8px}.rev.gate ol.gsteps{margin:10px 0 14px;padding-left:24px;list-style:decimal}.rev.gate ol.gsteps li{display:list-item;list-style:decimal;margin:2px 0;padding:0;border:0;background:none}.gbtn{display:inline-block;text-decoration:none;text-align:center}.grow{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.grow input{flex:1;min-width:150px;padding:10px 12px;font-size:16px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink)}.gmsg{color:var(--bad);min-height:1.2em;margin:8px 0 0}.gnote{color:var(--muted);font-size:13px;margin:4px 0 0}
 .ubox b,.trial b{display:block;margin-bottom:4px}.trial{border-color:var(--accent)}.rtab{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}.rtab th,.rtab td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left}.rtab th{color:var(--muted);font-weight:600}.wlist{list-style:none;margin:10px 0 0;padding:0}.rev .wlist li{display:block;padding:8px 0;border-bottom:1px solid var(--line);border-radius:0}.wlist .wq{display:block}.wlist .wc{display:block;color:var(--bad);font-size:13px;margin-top:2px}
 #app.locked>*:not(.gatewrap){filter:blur(3px);opacity:.6;pointer-events:none;user-select:none}.gatewrap{position:fixed;inset:0;z-index:60;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:70px 14px 24px;background:rgba(20,30,50,.28)}.gatebox{width:100%;max-width:460px}.gatebox .rev{box-shadow:0 10px 30px rgba(0,0,0,.18)}
@@ -136,6 +136,10 @@ h2::after{content:"";flex:1;border-top:1px solid var(--line)}
 footer{margin-top:28px;font-size:13px;color:var(--muted)}footer .copy{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--line);color:var(--ink);font-weight:600}
 @media (max-width:420px){.stem{font-size:18px}.omr button{height:36px;font-size:13px}.score .big{font-size:44px}}
 @media (prefers-reduced-motion:no-preference){.opt,.part{transition:border-color .12s,background .12s}}
+
+.fbrow[hidden],.fbta[hidden],.fbbox[hidden],.fbmsg[hidden]{display:none}
+body{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;-moz-user-select:text;user-select:text}img,svg{-webkit-user-drag:none;user-drag:none}
+@media print{body>*{display:none!important}body::before{content:'이 사이트의 문제와 해설은 인쇄할 수 없습니다. ⓒ 2026 장미정';display:block;padding:40px;font-size:18px;color:#000}}
 </style>
 </head>
 <body>
@@ -400,10 +404,39 @@ function card(p,all){
 
 var FB_ON=true;
 var FB_FORM='https://docs.google.com/forms/d/1_7Icx0UN9w2BSGBQOQDpLNOUfc4n9ZO3mMHE9xbIZTA/viewform';
-function fbUrl(part,q){
+var FB_POST='https://docs.google.com/forms/d/e/1FAIpQLSc-hFIfAjTA1ghv5-eff4lBx0OwHGb7lmnr5GSgHCiIYV347w/formResponse';
+function fbData(part,q){
   var txt=q.q; if(txt.length>300) txt=txt.slice(0,300)+'…';
   var ans=CIRC[q.a]+' '+q.o[q.a]; if(ans.length>120) ans=ans.slice(0,120)+'…';
-  return FB_FORM+'?usp=pp_url&entry.1841103397='+encodeURIComponent(part||'')+'&entry.775870497='+encodeURIComponent(txt+'\n(표시된 정답: '+ans+')');
+  var t=q.q.replace(/\s+/g,' '); if(t.length>40) t=t.slice(0,40)+'…';
+  return {part:part||'', q:txt+'\n(표시된 정답: '+ans+')', title:'['+(part||'')+'] '+t};
+}
+function fbUrl(part,q,body){
+  var d=fbData(part,q);
+  return FB_FORM+'?usp=pp_url&entry.1841103397='+encodeURIComponent(d.part)+'&entry.775870497='+encodeURIComponent(d.q)+'&entry.1256377785='+encodeURIComponent(d.title)+(body?'&entry.741241259='+encodeURIComponent(body):'');
+}
+function fbBox(part,q){
+  var wrap=el('div','fbwrap');
+  var btn=el('button','fb','이 문제 건의하기'); btn.type='button'; wrap.appendChild(btn);
+  var box=el('div','fbbox'); box.hidden=true;
+  box.appendChild(el('p','fbnote','파트와 문제는 자동으로 함께 전달됩니다. 건의 내용만 적어 주세요.'));
+  var ta=document.createElement('textarea'); ta.className='fbta'; ta.rows=4; ta.maxLength=1000; ta.placeholder='예) 정답이 2번이 아니라 3번인 것 같습니다. / 해설의 이 부분이 이해되지 않습니다.'; box.appendChild(ta);
+  var row=el('div','fbrow'); var send=el('button','btn pri','보내기'); send.type='button'; var cancel=el('button','btn','취소'); cancel.type='button'; row.appendChild(send); row.appendChild(cancel); box.appendChild(row);
+  var msg=el('p','fbmsg'); msg.hidden=true; box.appendChild(msg);
+  wrap.appendChild(box);
+  btn.addEventListener('click',function(){ box.hidden=!box.hidden; if(!box.hidden) ta.focus(); });
+  cancel.addEventListener('click',function(){ box.hidden=true; });
+  ta.addEventListener('input',function(){ msg.hidden=true; });
+  send.addEventListener('click',function(){
+    var body=ta.value.replace(/^\s+|\s+$/g,'');
+    if(body.length<2){ msg.hidden=false; msg.className='fbmsg bad'; msg.textContent='건의 내용을 적어 주세요.'; ta.focus(); return; }
+    var d=fbData(part,q); send.disabled=true; send.textContent='보내는 중';
+    var data='entry.1841103397='+encodeURIComponent(d.part)+'&entry.775870497='+encodeURIComponent(d.q)+'&entry.1256377785='+encodeURIComponent(d.title)+'&entry.741241259='+encodeURIComponent(body);
+    function done(){ ta.hidden=true; row.hidden=true; msg.hidden=false; msg.className='fbmsg ok'; msg.textContent='건의가 접수되었습니다. 확인한 뒤 고치겠습니다. 고맙습니다.'; btn.textContent='건의 접수됨'; btn.disabled=true; }
+    function fail(){ send.disabled=false; send.textContent='보내기'; msg.hidden=false; msg.className='fbmsg bad'; msg.textContent='전송하지 못했습니다. '; var a=document.createElement('a'); a.href=fbUrl(part,q,body); a.target='_blank'; a.rel='noopener'; a.textContent='여기를 눌러 건의 양식에서 보내 주세요.'; msg.appendChild(a); }
+    try{ fetch(FB_POST,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:data}).then(done,fail); }catch(e){ fail(); }
+  });
+  return wrap;
 }
 function start(part,qs,mode){
   if(!unlocked()){ if(mode==='trial'&&!trialUsed()){ markTrial(); } else { gate(); return; } }
@@ -531,7 +564,7 @@ function renderResult(){
         r.appendChild(wx); }
       var ex=el('div','exp'); ex.appendChild(el('b',null,'[문제해설]')); ex.appendChild(el('p',null,det)); if(q.e.g&&FIG[q.e.g]){ var fg=document.createElement('figure'); fg.className='fig'; fg.innerHTML=FIG[q.e.g].s; fg.appendChild(el('figcaption',null,FIG[q.e.g].c)); ex.appendChild(fg); } if(q.e.p){ q.e.p.forEach(function(id){ var ph=PHOTO[id]; if(!ph) return; var pf=document.createElement('figure'); pf.className='fig photo'; var im=document.createElement('img'); im.loading='lazy'; im.alt=ph.c; im.src=ph.u; im.addEventListener('error',function(){ pf.style.display='none'; }); pf.appendChild(im); var fc=el('figcaption',null,ph.c+'\n'); var al=document.createElement('a'); al.href=ph.p; al.target='_blank'; al.rel='noopener'; al.textContent='출처: '+ph.a; fc.appendChild(al); pf.appendChild(fc); ex.appendChild(pf); }); } if(q.e.k&&q.e.k.length){ var kb=el('div','key'); kb.appendChild(el('b',null,'핵심 암기')); var ul=document.createElement('ul'); q.e.k.forEach(function(x){ ul.appendChild(el('li',null,x)); }); kb.appendChild(ul); ex.appendChild(kb); } r.appendChild(ex);
     }
-    if(FB_ON){ var fb=document.createElement('a'); fb.className='fb'; fb.target='_blank'; fb.rel='noopener'; fb.textContent='이 문제 건의하기'; fb.href=fbUrl(S.part.id==='all'?q.part:S.part.name,q); r.appendChild(fb); }
+    if(FB_ON){ r.appendChild(fbBox(S.part.id==='all'?q.part:S.part.name,q)); }
     app.appendChild(r);
   });
   if(!shown) app.appendChild(el('p','lead','틀린 문제가 없습니다. 모두 맞혔습니다.'));
@@ -542,6 +575,19 @@ homeBtn.addEventListener('click',home);
 function fromHash(){ var id=(location.hash||'').replace('#',''); var p=id&&partById(id); if(p){ start(p,drawNew(p),'new'); return true; } return false; }
 window.addEventListener('hashchange',function(){ if(!fromHash()&&!location.hash) home(); });
 if(!fromHash()) home();
+})();
+
+(function(){
+  function editable(t){ return t&&(t.tagName==='TEXTAREA'||t.tagName==='INPUT'); }
+  ['contextmenu','copy','cut','dragstart','selectstart'].forEach(function(ev){
+    document.addEventListener(ev,function(e){ if(!editable(e.target)) e.preventDefault(); });
+  });
+  document.addEventListener('keydown',function(e){
+    if(!(e.ctrlKey||e.metaKey)) return;
+    var k=(e.key||'').toLowerCase();
+    if(k==='p'||k==='s'||k==='u'){ e.preventDefault(); return; }
+    if((k==='c'||k==='x'||k==='a')&&!editable(e.target)) e.preventDefault();
+  });
 })();
 </script>
 </body>
