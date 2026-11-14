@@ -360,9 +360,19 @@ function records(){
   window.scrollTo(0,0);
 }
 var OCR_BASE='https://rosejung3210.github.io/bike-quiz/ocr/', ocrW=null;
+var gateHandle=null;
+function gateOpen(){ return !!gateHandle&&!!document.querySelector('.gatewrap'); }
+function firstImage(dt){ if(!dt) return null; var i,f; if(dt.items){ for(i=0;i<dt.items.length;i++){ if(dt.items[i].kind==='file'&&/^image\//.test(dt.items[i].type)){ f=dt.items[i].getAsFile(); if(f) return f; } } } if(dt.files){ for(i=0;i<dt.files.length;i++){ if(/^image\//.test(dt.files[i].type)) return dt.files[i]; } } return null; }
+document.addEventListener('paste',function(e){ if(!gateOpen()) return; var f=firstImage(e.clipboardData); if(f){ e.preventDefault(); gateHandle(f); } });
+document.addEventListener('dragover',function(e){ if(gateOpen()) e.preventDefault(); });
+document.addEventListener('drop',function(e){ if(!gateOpen()) return; var f=firstImage(e.dataTransfer); if(f){ e.preventDefault(); gateHandle(f); } });
 function loadScript(src){ return new Promise(function(res,rej){ var sc=document.createElement('script'); sc.src=src; sc.onload=function(){ res(); }; sc.onerror=function(){ rej(new Error('script')); }; document.head.appendChild(sc); }); }
 function ocrWorker(){ if(ocrW) return Promise.resolve(ocrW);
-  return (window.Tesseract?Promise.resolve():loadScript(OCR_BASE+'tesseract.min.js')).then(function(){ return window.Tesseract.createWorker('kor',1,{workerPath:OCR_BASE+'worker.min.js',corePath:OCR_BASE,langPath:OCR_BASE,gzip:true}); }).then(function(w){ ocrW=w; return w; }); }
+  function make(opts){ return window.Tesseract.createWorker('kor',1,opts); }
+  var first=(window.Tesseract?Promise.resolve():loadScript(OCR_BASE+'tesseract.min.js')).then(function(){ return make({workerPath:OCR_BASE+'worker.min.js',corePath:OCR_BASE,langPath:OCR_BASE,gzip:true,cacheMethod:'none'}); });
+  return first.catch(function(e1){ window.__rjErr1=String(e1&&e1.message||e1);
+    return (window.Tesseract?Promise.resolve():loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js')).then(function(){ return make({cacheMethod:'none'}); });
+  }).then(function(w){ ocrW=w; return w; }); }
 function prepImage(file){ return new Promise(function(res,rej){ var img=new Image(), u=URL.createObjectURL(file);
   img.onload=function(){ var w=img.naturalWidth,h=img.naturalHeight,sc=1; if(w<900) sc=Math.min(3,900/w); if(w*sc>1800) sc=1800/w;
     var c=document.createElement('canvas'); c.width=Math.round(w*sc); c.height=Math.round(h*sc); var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.imageSmoothingQuality='high'; x.drawImage(img,0,0,c.width,c.height); URL.revokeObjectURL(u); res(c); };
@@ -370,7 +380,7 @@ function prepImage(file){ return new Promise(function(res,rej){ var img=new Imag
 function checkCapture(text){ var t=String(text||'').replace(/\s+/g,''), r={posts:null,grade:null,newbie:false};
   var m=t.match(/(?:게시글|작성글|작성한글|쓴글)[^\d]{0,3}(\d[\d,]*)/); if(m) r.posts=parseInt(m[1].replace(/,/g,''),10);
   var g=t.match(/(일반|성실|열심|우수|감사).?[멤엠맴].?버|부매니저|매니저|스탭|스태프/); if(g) r.grade=g[1]?g[1]+'멤버':g[0];
-  r.newbie=!r.grade&&(/새[싹쌍쌈싸]|[멤엠맴]버/.test(t)||/[가-힣]{2,}등급안내/.test(t)); r.ok=(r.posts>=1)&&!!r.grade; return r; }
+  r.newbie=!r.grade&&(/새[싹쌍쌈싸]|[멤엠맴]버/.test(t)||/[가-힣]{2,}등급안내/.test(t)); r.staff=!!g&&!g[1]; r.ok=!!r.grade&&(r.staff||r.posts>=1); return r; }
 window.__rjCheck=checkCapture;
 function gate(){
   homeBody(true);
@@ -385,7 +395,7 @@ function gate(){
   var eg=document.createElement('figure'); eg.className='gshot'; eg.innerHTML='<svg viewBox="0 0 300 150" role="img" aria-label="나의활동 화면 예시"><rect x="1" y="1" width="298" height="148" rx="8" fill="#fff" stroke="#c9d0da"/><text x="70" y="24" font-size="13" fill="#8a94a3">카페정보</text><text x="180" y="24" font-size="13" font-weight="700" fill="#1c2430">나의활동</text><line x1="14" y1="36" x2="286" y2="36" stroke="#e3e7ee"/><text x="22" y="62" font-size="13" fill="#1c2430">일반멤버</text><text x="278" y="62" font-size="12" fill="#8a94a3" text-anchor="end">등급 안내</text><text x="22" y="88" font-size="13" fill="#1c2430">방문</text><text x="278" y="88" font-size="13" fill="#1c2430" text-anchor="end">3회</text><text x="22" y="114" font-size="13" fill="#1c2430">내가 쓴 게시글</text><text x="278" y="114" font-size="13" fill="#1c2430" text-anchor="end">1개</text><text x="22" y="138" font-size="13" fill="#1c2430">내가 쓴 댓글</text><text x="278" y="138" font-size="13" fill="#1c2430" text-anchor="end">0개</text><rect x="14" y="46" width="272" height="24" rx="3" fill="none" stroke="#d92d20" stroke-width="2"/><rect x="14" y="98" width="272" height="24" rx="3" fill="none" stroke="#d92d20" stroke-width="2"/></svg>';
   eg.appendChild(el('figcaption',null,'예시 그림. 빨간 칸 두 줄이 함께 보이게 캡처해 주세요.')); c.appendChild(eg);
   var fi=document.createElement('input'); fi.type='file'; fi.accept='image/*'; fi.id='gfile'; fi.className='gfile';
-  var lab=document.createElement('label'); lab.className='btn gbtn gup'; lab.setAttribute('for','gfile'); lab.textContent='인증샷 올리기'; c.appendChild(fi); c.appendChild(lab);
+  var lab=document.createElement('label'); lab.className='btn gbtn gup'; lab.setAttribute('for','gfile'); lab.textContent='인증샷 올리기'; c.appendChild(fi); c.appendChild(lab); c.appendChild(el('p','gnote gpaste','PC에서는 화면을 캡처한 뒤 이 화면에서 Ctrl+V를 눌러 바로 붙여 넣을 수 있습니다. 그림 파일을 끌어다 놓아도 됩니다.'));
   var msg=el('p','gmsg',''); c.appendChild(msg);
   var res=el('ul','gres'); res.hidden=true; c.appendChild(res);
   var ok=el('button','btn pri gbtn gin','입장하기'); ok.type='button'; ok.disabled=true; c.appendChild(ok);
@@ -398,15 +408,21 @@ function gate(){
       lk.addEventListener('click',function(){ if(c.querySelector('.grow')) return; var row=el('div','grow'); var inp=document.createElement('input'); inp.type='text'; inp.placeholder='입장 코드'; inp.autocomplete='off'; inp.setAttribute('aria-label','입장 코드'); var go=el('button','btn','확인'); go.type='button';
         function tryIn(){ var v=(inp.value||'').replace(/\s+/g,'').toLowerCase(); if(GATE_HASH.indexOf(codeHash(v))>=0) enter(); else say('코드가 맞지 않습니다. 카페에 문의해 주세요.'); }
         go.addEventListener('click',tryIn); inp.addEventListener('keydown',function(e){ if(e.key==='Enter') tryIn(); }); row.appendChild(inp); row.appendChild(go); c.appendChild(row); inp.focus(); }); } }
-  fi.addEventListener('change',function(){ var f=fi.files&&fi.files[0]; if(!f) return; ok.disabled=true; res.hidden=true; res.textContent=''; say('사진을 읽고 있습니다. 처음에는 10초쯤 걸릴 수 있습니다.',true); lab.classList.add('busy');
+  function handle(f){ if(!f||lab.classList.contains('busy')) return; ok.disabled=true; res.hidden=true; res.textContent=''; say('사진을 읽고 있습니다. 처음에는 10초쯤 걸릴 수 있습니다.',true); lab.classList.add('busy');
     prepImage(f).then(function(cv){ return ocrWorker().then(function(w){ return w.recognize(cv); }); }).then(function(out){
       lab.classList.remove('busy'); fi.value=''; var raw=out&&out.data&&out.data.text; window.__rjLast=raw; var r=checkCapture(raw); res.hidden=false;
       line('등급', r.grade?r.grade:(r.newbie?'일반멤버 아님':'읽지 못함'), !!r.grade);
-      line('내가 쓴 게시글', r.posts==null?'읽지 못함':r.posts+'개', r.posts>=1);
+      line('내가 쓴 게시글', r.posts==null?(r.staff?'운영진은 확인하지 않음':'읽지 못함'):r.posts+'개', r.staff||r.posts>=1);
       if(r.ok){ say('확인되었습니다. 입장하기를 눌러 주세요.',true); ok.disabled=false; ok.focus(); }
       else { failed(); if(!r.grade&&r.newbie) say('등급이 아직 일반멤버가 아닙니다. 일반멤버가 된 뒤 다시 올려 주세요.'); else if(r.posts===0) say('게시글이 0개입니다. 가입인사를 쓴 뒤 다시 올려 주세요.'); else say('등급과 "내가 쓴 게시글"이 함께 보이도록 다시 캡처해 주세요.'); }
-    }).catch(function(){ lab.classList.remove('busy'); fi.value=''; failed(); say('사진을 읽지 못했습니다. 인터넷 연결을 확인하고 다시 올려 주세요.'); });
-  });
+    }).catch(function(e){ lab.classList.remove('busy'); fi.value=''; failed(); var why=String(e&&e.message||e||''); var img=(why==='image');
+      if(img) say('그림 파일을 열지 못했습니다. 화면을 다시 캡처해 올려 주세요.');
+      else if(location.hostname!=='rosejung3210.github.io') say('이 화면에서는 사진 확인이 동작하지 않습니다. 실제 주소(rosejung3210.github.io/bike-quiz/rosejung-mobility.html)에서 열어 주세요.');
+      else say('사진 읽기 프로그램을 불러오지 못했습니다. 잠시 뒤 다시 올려 주세요.');
+      res.hidden=false; res.textContent=''; var li=el('li','no'); li.appendChild(el('span',null,'오류 내용')); li.appendChild(el('b',null,(why||'알 수 없음').slice(0,80))); res.appendChild(li); });
+  }
+  fi.addEventListener('change',function(){ handle(fi.files&&fi.files[0]); });
+  gateHandle=handle;
   c.appendChild(el('p','gnote','올린 사진은 이 기기 안에서만 읽습니다. 어디에도 저장하거나 보내지 않습니다. 한 번 확인되면 이 기기에서는 다시 묻지 않습니다.'));
   box.appendChild(c); app.appendChild(wrap); app.classList.add('locked');
 }
