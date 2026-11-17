@@ -63,6 +63,8 @@ h2::after{content:"";flex:1;border-top:1px solid var(--line)}
 .part.exam .nm{font-size:19px}
 .part.exam .meta{color:inherit;opacity:.85;flex-wrap:wrap;font-size:13.5px}
 .part.exam:hover{border-color:var(--sky)}
+.rev.hotbox{border-left:6px solid var(--bad)}
+.notice.hot b{display:block;margin-bottom:4px;color:var(--bad)}
 .fstat{display:grid;gap:10px;margin-top:10px}
 .fg{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)}
 .frow{display:grid;grid-template-columns:minmax(96px,1.2fr) 2fr auto;gap:10px;align-items:center}
@@ -337,6 +339,10 @@ function saveRec(u,r){ try{ localStorage.setItem('rj_rec_'+encodeURIComponent(u.
 function recSum(r){ var n=0,c=0; r.s.forEach(function(x){ n+=x.n; c+=x.c; }); return {n:n,c:c}; }
 function ymd(t){ var d=new Date(t); function z(x){ return (x<10?'0':'')+x; } return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
 function hm(t){ var d=new Date(t); function z(x){ return (x<10?'0':'')+x; } return z(d.getHours())+':'+z(d.getMinutes()); }
+/* 이어서 틀린 횟수: 맞히면 0으로 돌아간다. 예전 기록은 한 번도 맞힌 적이 없을 때만 틀린 횟수를 그대로 쓴다 */
+var HOT=3;
+function streakOf(r,k){ if(r.x&&(k in r.x)) return r.x[k]; return (r.c[k]||0)?0:(r.w[k]||0); }
+function hotList(r){ var a=[]; ALL.forEach(function(q){ var n=streakOf(r,keyOf(q)); if(n>=HOT) a.push({q:q,n:n}); }); a.sort(function(x,y){ return y.n-x.n; }); return a; }
 function weakList(r){ var a=[]; ALL.forEach(function(q){ var w=r.w[keyOf(q)]||0; if(w>0) a.push({q:q,w:w,c:r.c[keyOf(q)]||0}); }); a.sort(function(x,y){ return y.w-x.w || x.c-y.c; }); return a; }
 var SUB8=['엔진','섀시(휠·타이어·현가·조향·제동)','동력전달장치','프레임','전기장치(시동·충전·점화·등화)','안전·편의장치','전기 이륜자동차','안전 및 법규'], FMIN=5;
 /* 분야별로 푼 횟수와 맞힌 횟수: 문제마다 남긴 맞힘·틀림 횟수를 분야로 모은다 */
@@ -384,7 +390,7 @@ function userBox(){
     var r=loadRec(u), s=recSum(r);
     c.appendChild(el('b',null,u.nick+' ('+u.id+') 님의 기록'));
     c.appendChild(el('p','lead',s.n? ('지금까지 '+r.s.length+'번, '+s.n+'문제를 풀었습니다. 정답률 '+scoreOf(s.c,s.n)+'%') : '아직 푼 기록이 없습니다. 문제를 풀고 답안을 제출하면 기록됩니다.'));
-    var w3=weakList(r).filter(function(x){ return x.w>=3; }).length; if(w3) c.appendChild(el('p','gmsg','3번 이상 틀린 문제가 '+w3+'개 있습니다. 내 기록에서 다시 풀어 보세요.'));
+    var w3=hotList(r).length; if(w3) c.appendChild(el('p','gmsg',HOT+'번 이어서 틀린 문제가 '+w3+'개 있습니다. 내 기록에서 다시 풀어 보십시오.'));
     var row2=el('div','grow'); var b1=el('button','btn pri','내 기록 보기'); b1.type='button'; b1.addEventListener('click',records);
     var b2=el('button','btn','다른 사람으로 바꾸기'); b2.type='button'; b2.addEventListener('click',function(){ setUser(null); home(); });
     row2.appendChild(b1); row2.appendChild(b2); c.appendChild(row2);
@@ -410,8 +416,17 @@ function records(){
     var c3=el('section','rev'); c3.appendChild(el('b',null,'최근 풀이 (최대 20번)')); var tb2=el('table','rtab'); var hr2=el('tr'); ['날짜','시각','파트','점수'].forEach(function(h){ hr2.appendChild(el('th',null,h)); }); tb2.appendChild(hr2);
     r.s.slice(-20).reverse().forEach(function(x){ var tr=el('tr'); [ymd(x.t),hm(x.t),x.p,x.c+' / '+x.n].forEach(function(v){ tr.appendChild(el('td',null,v)); }); tb2.appendChild(tr); });
     c3.appendChild(tb2); app.appendChild(c3);
-    var wl=weakList(r), rep=wl.filter(function(x){ return x.w>=3; }), show=(rep.length?rep:wl).slice(0,30);
-    var c4=el('section','rev'); c4.appendChild(el('b',null,rep.length?'3번 이상 틀린 문제 ('+rep.length+'개)':'틀린 적이 있는 문제 (3번 이상 틀린 문제는 아직 없습니다)'));
+    var hl=hotList(r), ch=el('section','rev'+(hl.length?' hotbox':'')); ch.appendChild(el('b',null,HOT+'번 이어서 틀린 문제 ('+hl.length+'개)'));
+    if(!hl.length) ch.appendChild(el('p',null,'없습니다. 같은 문제를 '+HOT+'번 이어서 틀리면 여기에서 알려 드립니다.'));
+    else {
+      var byF={}; hl.forEach(function(x){ var nm=SUB4[S8TO4[x.q.s]]; byF[nm]=(byF[nm]||0)+1; });
+      ch.appendChild(el('p',null,'분야별로는 '+SUB4.filter(function(nm){ return byF[nm]; }).map(function(nm){ return nm+' '+byF[nm]+'개'; }).join(', ')+'입니다. 한 번 맞히면 이 목록에서 빠집니다.'));
+      var hr0=el('div','grow'); var hbn=el('button','btn pri','이 문제들만 다시 풀기'); hbn.type='button'; hbn.addEventListener('click',function(){ var qs=hl.map(function(x){ return x.q; }); start({id:'hot',name:HOT+'번 이어서 틀린 문제',qs:qs},shuffle(qs).slice(0,SIZE),'retry'); }); hr0.appendChild(hbn); ch.appendChild(hr0);
+      var hul=el('ul','wlist'); hl.slice(0,30).forEach(function(x){ var li=el('li'); li.appendChild(el('span','wq',x.q.q)); li.appendChild(el('span','wc',SUB4[S8TO4[x.q.s]]+' · '+x.q.part+' · 이어서 틀림 '+x.n+'번')); hul.appendChild(li); }); ch.appendChild(hul);
+    }
+    app.appendChild(ch);
+    var wl=weakList(r), show=wl.slice(0,30);
+    var c4=el('section','rev'); c4.appendChild(el('b',null,'틀린 적이 있는 문제 ('+wl.length+'개)'));
     if(!show.length){ c4.appendChild(el('p',null,'틀린 문제가 없습니다.')); }
     else {
       var bw=el('button','btn pri','이 문제들만 다시 풀기'); bw.type='button'; bw.addEventListener('click',function(){ var qs=show.map(function(x){ return x.q; }); start({id:'weak',name:'자주 틀리는 문제',qs:qs},shuffle(qs).slice(0,SIZE),'retry'); });
@@ -633,9 +648,9 @@ function grade(){
   var n=S.qs.length, wrong=[], correct=0;
   S.qs.forEach(function(q,i){ if(S.ans[i]===q.a) correct++; else wrong.push(q); });
   if(S.mode==='new'){ var seen=loadSeen(S.part.id).slice(); S.qs.forEach(function(q){ if(seen.indexOf(q.id)<0) seen.push(q.id); }); saveSeen(S.part.id,seen); }
-  var u=getUser(); if(u&&S.mode!=='trial'){ var rr=loadRec(u); rr.s.push({t:Date.now(),p:S.part.name,n:n,c:correct}); if(rr.s.length>500) rr.s=rr.s.slice(-500); S.qs.forEach(function(q,i){ var k=keyOf(q); if(S.ans[i]===q.a) rr.c[k]=(rr.c[k]||0)+1; else rr.w[k]=(rr.w[k]||0)+1; }); saveRec(u,rr); }
+  var u=getUser(); if(u&&S.mode!=='trial'){ var rr=loadRec(u); rr.s.push({t:Date.now(),p:S.part.name,n:n,c:correct}); if(rr.s.length>500) rr.s=rr.s.slice(-500); if(!rr.x) rr.x={}; var hot=[]; S.qs.forEach(function(q,i){ var k=keyOf(q), prev=streakOf(rr,k); if(S.ans[i]===q.a){ rr.c[k]=(rr.c[k]||0)+1; rr.x[k]=0; } else { rr.w[k]=(rr.w[k]||0)+1; rr.x[k]=prev+1; if(rr.x[k]>=HOT) hot.push(q); } }); saveRec(u,rr); S.hot=hot; }
   var sub=null; if(S.mode==='exam'){ sub=SUB4.map(function(nm){return {name:nm,n:0,c:0};}); S.qs.forEach(function(q,i){ var g=sub[S8TO4[q.s]]; g.n++; if(S.ans[i]===q.a) g.c++; }); }
-  S.res={correct:correct,wrong:wrong,score:scoreOf(correct,n),time:(S.limit?Math.min(S.limit,Date.now()-S.t0):Date.now()-S.t0),filter:wrong.length?'wrong':'all',sub:sub,timeup:!!S.timeup};
+  S.res={correct:correct,wrong:wrong,score:scoreOf(correct,n),time:(S.limit?Math.min(S.limit,Date.now()-S.t0):Date.now()-S.t0),filter:wrong.length?'wrong':'all',sub:sub,timeup:!!S.timeup,hot:S.hot||[]};
   renderResult(); window.scrollTo(0,0);
 }
 
@@ -651,6 +666,9 @@ function renderResult(){
   d.appendChild(el('div','det',n+'문제 중 '+R.correct+'문제 정답, '+R.wrong.length+'문제 오답 · 합격 기준 '+PASS+'점'));
   sc.appendChild(d); app.appendChild(sc);
   if(R.timeup){ var tu=el('div','notice'); tu.appendChild(el('div',null,'60분이 지나 자동으로 제출했습니다. 답하지 않은 문제는 틀린 것으로 채점했습니다.')); app.appendChild(tu); }
+  if(R.hot.length){ var hb=el('div','notice hot'); hb.setAttribute('role','alert'); hb.appendChild(el('b',null,HOT+'번 이어서 틀린 문제가 '+R.hot.length+'개 있습니다'));
+    hb.appendChild(el('div',null,'아래 정답 확인에서 "'+HOT+'번 연속 틀림" 표시가 붙은 문제의 해설을 꼭 읽어 보십시오. 맞힐 때까지 내 기록에 남습니다.'));
+    var hn=el('div','nav'); var hgo=el('button','btn pri','이 문제들만 다시 풀기'); hgo.type='button'; hgo.addEventListener('click',function(){ var qs=R.hot.slice(); start({id:'hot',name:HOT+'번 이어서 틀린 문제',qs:qs},shuffle(qs).slice(0,SIZE),'retry'); }); hn.appendChild(hgo); hb.appendChild(hn); app.appendChild(hb); }
   if(R.sub){ var sg=el('div','subj'); R.sub.forEach(function(g){ var bx=el('div'); bx.appendChild(el('b',null,g.name)); bx.appendChild(el('span',null,g.n+'문제 중 '+g.c+'문제 정답 · '+scoreOf(g.c,g.n)+'%')); sg.appendChild(bx); }); app.appendChild(sg); }
 
   var ac=el('div','actions');
@@ -675,7 +693,7 @@ function renderResult(){
   S.qs.forEach(function(q,i){
     var ok=S.ans[i]===q.a; if(R.filter==='wrong'&&ok) return; shown++;
     var r=el('article','rev'); r.id='rev'+i;
-    var h=el('div','qno','문제 '+(i+1)+(mixed()?'  ·  '+subName(q):'')); h.appendChild(el('span','tag '+(ok?'ok':'no'),ok?'정답':(S.ans[i]===null?'답하지 않음':'오답'))); r.appendChild(h);
+    var h=el('div','qno','문제 '+(i+1)+(mixed()?'  ·  '+subName(q):'')); h.appendChild(el('span','tag '+(ok?'ok':'no'),ok?'정답':(S.ans[i]===null?'답하지 않음':'오답'))); if(R.hot.indexOf(q)>=0) h.appendChild(el('span','tag no',HOT+'번 연속 틀림')); r.appendChild(h);
     r.appendChild(el('p','stem',q.q));
     if(q.x){ var bx=el('div','box'); q.x.forEach(function(x){bx.appendChild(el('p',null,x));}); r.appendChild(bx); }
     var ol=el('ol');
