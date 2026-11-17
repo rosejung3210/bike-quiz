@@ -615,7 +615,7 @@ window.addEventListener('hashchange',render);
 function footer(){
   var f=el('footer');
   f.appendChild(el('div',null,'이 사이트의 문제와 해설은 무단 복제·무단 배포를 금합니다.'));
-  f.appendChild(el('div',null,'풀이 기록은 지금 쓰는 기기의 브라우저에만 저장되며 다른 곳으로 보내지 않습니다.'));
+  f.appendChild(el('div',null,'혼자 푼 기록은 지금 쓰는 기기의 브라우저에만 저장됩니다. 함께 풀기와 교안의 도움 요청에서 넣은 닉네임·점수·질문은 수업 진행을 위해 서버에 저장되며 같은 방의 강사와 수강생에게 보입니다.'));
   var tb=btn(null,'강사 화면',function(){ guardedGo('teacher'); }); tb.style.cssText='background:none;border:0;color:var(--muted);text-decoration:underline;padding:6px 0;font-size:14px'; f.appendChild(tb);
   return f;
 }
@@ -1064,7 +1064,7 @@ function finish(early){
    예: 'https://내프로젝트-default-rtdb.asia-southeast1.firebasedatabase.app'
    비워 두면 도움 요청·질문 보내기 단추가 잠깁니다.
    ================================================================ */
-var RT={ db:'' };
+var RT={ db:'https://rosejung-mobility-default-rtdb.asia-southeast1.firebasedatabase.app' };
 if(!RT.db) RT.db=lsGet('mb_rtdb')||'';
 /* 주소가 비어 있으면: 미리보기에서는 이 기기 안에서만 주고받는 연습 모드로 동작하고, 실제 주소에서는 잠근다. */
 RT.local=!RT.db&&PREVIEW; RT.on=!!RT.db||RT.local;
@@ -1726,7 +1726,7 @@ function party(){
     var c=el('div','card pform'); c.style.marginTop='14px'; s.appendChild(c);
     var i1=document.createElement('input'); i1.type='text'; i1.placeholder='방 코드'; i1.maxLength=12; i1.value=room; i1.setAttribute('aria-label','방 코드');
     var i2=document.createElement('input'); i2.type='text'; i2.placeholder='닉네임'; i2.maxLength=20; i2.value=nick; i2.setAttribute('aria-label','닉네임');
-    var m=el('p','note','강사가 알려 준 방 코드와 순위표에 보일 닉네임을 넣으십시오.');
+    var m=el('p','note','강사가 알려 준 방 코드와 순위표에 보일 닉네임을 넣으십시오. 닉네임과 점수는 서버에 저장되어 같은 방 사람들에게 보이므로 실명 대신 별명을 써도 됩니다.');
     c.appendChild(i1); c.appendChild(i2);
     c.appendChild(btn('btn pri','들어가기',function(){ var r=cleanRoom(i1.value), k=i2.value.trim(); if(r.length<4||!k){ m.textContent='방 코드(4자 이상)와 닉네임을 모두 넣어 주십시오.'; return; } lsSet('mb_room',r); lsSet('mb_nick',k); PT.form=false; render(); }));
     c.appendChild(m); return;
