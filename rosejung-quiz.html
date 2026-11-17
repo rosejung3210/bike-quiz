@@ -63,6 +63,18 @@ h2::after{content:"";flex:1;border-top:1px solid var(--line)}
 .part.exam .nm{font-size:19px}
 .part.exam .meta{color:inherit;opacity:.85;flex-wrap:wrap;font-size:13.5px}
 .part.exam:hover{border-color:var(--sky)}
+.fstat{display:grid;gap:10px;margin-top:10px}
+.fg{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--surface)}
+.frow{display:grid;grid-template-columns:minmax(96px,1.2fr) 2fr auto;gap:10px;align-items:center}
+.frow .fn{font-weight:600;word-break:keep-all}
+.frow.sub{margin-top:8px;font-size:14px}
+.frow.sub .fn{font-weight:500;color:var(--muted);padding-left:10px}
+.fbar{height:12px;background:var(--line);border-radius:6px;overflow:hidden}
+.fbar i{display:block;height:100%;background:var(--accent)}
+.fbar.lo i{background:var(--bad)}
+.fbar.hi i{background:var(--ok)}
+.fpct{font-family:var(--num);font-size:13.5px;white-space:nowrap;text-align:right;min-width:158px}
+@media (max-width:600px){.frow{grid-template-columns:1fr auto}.frow .fbar{grid-column:1/-1;grid-row:2}.fpct{min-width:0}}
 .subj{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
 .subj div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .subj b{display:block;font-size:15px;margin-bottom:2px}
@@ -326,6 +338,37 @@ function recSum(r){ var n=0,c=0; r.s.forEach(function(x){ n+=x.n; c+=x.c; }); re
 function ymd(t){ var d=new Date(t); function z(x){ return (x<10?'0':'')+x; } return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
 function hm(t){ var d=new Date(t); function z(x){ return (x<10?'0':'')+x; } return z(d.getHours())+':'+z(d.getMinutes()); }
 function weakList(r){ var a=[]; ALL.forEach(function(q){ var w=r.w[keyOf(q)]||0; if(w>0) a.push({q:q,w:w,c:r.c[keyOf(q)]||0}); }); a.sort(function(x,y){ return y.w-x.w || x.c-y.c; }); return a; }
+var SUB8=['엔진','섀시(휠·타이어·현가·조향·제동)','동력전달장치','프레임','전기장치(시동·충전·점화·등화)','안전·편의장치','전기 이륜자동차','안전 및 법규'], FMIN=5;
+/* 분야별로 푼 횟수와 맞힌 횟수: 문제마다 남긴 맞힘·틀림 횟수를 분야로 모은다 */
+function fieldStats(r){
+  var f=SUB8.map(function(nm,k){ return {k:k,name:nm,n:0,c:0}; });
+  ALL.forEach(function(q){ var key=keyOf(q), c=r.c[key]||0, w=r.w[key]||0; if(c+w){ f[q.s].n+=c+w; f[q.s].c+=c; } });
+  var g=SUB4.map(function(nm,i){ return {name:nm,n:0,c:0,sub:[]}; });
+  f.forEach(function(x){ var gg=g[S8TO4[x.k]]; gg.n+=x.n; gg.c+=x.c; gg.sub.push(x); });
+  return {f:f,g:g};
+}
+function fieldPart(k){ return {id:'f'+k,name:SUB8[k],qs:ALL.filter(function(q){ return q.s===k; })}; }
+function fieldRow(x,sub){
+  var row=el('div','frow'+(sub?' sub':'')), p=scoreOf(x.c,x.n);
+  row.appendChild(el('span','fn',x.name));
+  var bar=el('div','fbar'+(x.n<FMIN?'':(p<PASS?' lo':(p>=80?' hi':'')))), i=el('i'); i.style.width=(x.n?Math.max(2,p):0)+'%'; bar.appendChild(i); bar.setAttribute('role','img'); bar.setAttribute('aria-label',x.name+' 정답률 '+(x.n?p+'%':'기록 없음')); row.appendChild(bar);
+  row.appendChild(el('span','fpct', x.n? (x.n+'문제 중 '+x.c+'문제 · '+p+'%'+(x.n<FMIN?' (문제 수 적음)':'')) : '아직 푼 문제 없음'));
+  return row;
+}
+function fieldBox(r){
+  var fs=fieldStats(r), c=el('section','rev'); c.appendChild(el('b',null,'분야별 정답률'));
+  var ok=fs.f.filter(function(x){ return x.n>=FMIN; }).sort(function(a,b){ return a.c/a.n-b.c/b.n; });
+  if(ok.length){
+    var w=ok[0], best=ok[ok.length-1];
+    c.appendChild(el('p',null,'가장 약한 분야는 "'+w.name+'"입니다(정답률 '+scoreOf(w.c,w.n)+'%).'+(ok.length>1&&best!==w?' 가장 잘 아는 분야는 "'+best.name+'"입니다('+scoreOf(best.c,best.n)+'%).':'')));
+    var rw=el('div','grow'); var bw=el('button','btn pri','약한 분야 문제 풀기'); bw.type='button'; bw.addEventListener('click',function(){ var p=fieldPart(w.k); start(p,drawNew(p),'new'); }); rw.appendChild(bw); c.appendChild(rw);
+  } else c.appendChild(el('p',null,'한 분야에서 '+FMIN+'문제 이상 풀면 약한 분야를 알려 드립니다.'));
+  var box=el('div','fstat');
+  fs.g.forEach(function(g){ var bx=el('div','fg'); bx.appendChild(fieldRow(g,false)); if(g.sub.length>1) g.sub.forEach(function(x){ bx.appendChild(fieldRow(x,true)); }); box.appendChild(bx); });
+  c.appendChild(box);
+  c.appendChild(el('p','gnote','막대가 빨간색이면 정답률 '+PASS+'% 미만, 초록색이면 80% 이상입니다. 같은 문제를 여러 번 풀면 푼 횟수만큼 셉니다.'));
+  return c;
+}
 function userBox(){
   var u=getUser(), c=el('section','rev ubox');
   if(!u){
@@ -355,6 +398,7 @@ function records(){
   var st=el('div','status'); st.appendChild(el('b',null,u.nick+' ('+u.id+') 님의 기록')); app.appendChild(st);
   var c1=el('section','rev'); c1.appendChild(el('b',null,'전체')); c1.appendChild(el('p',null,s.n? (r.s.length+'번 풀이 · '+s.n+'문제 · 맞힌 문제 '+s.c+'개 · 정답률 '+scoreOf(s.c,s.n)+'%') : '아직 푼 기록이 없습니다.')); app.appendChild(c1);
   if(s.n){
+    app.appendChild(fieldBox(r));
     var days={}, order=[]; r.s.forEach(function(x){ var d=ymd(x.t); if(!days[d]){ days[d]={k:0,n:0,c:0}; order.push(d); } days[d].k++; days[d].n+=x.n; days[d].c+=x.c; });
     var c2=el('section','rev'); c2.appendChild(el('b',null,'날짜별로 푼 문제')); var tb=el('table','rtab'); var hr=el('tr'); ['날짜','풀이 횟수','푼 문제','맞힌 문제','정답률'].forEach(function(h){ hr.appendChild(el('th',null,h)); }); tb.appendChild(hr);
     order.slice().reverse().forEach(function(d){ var x=days[d], tr=el('tr'); [d,x.k+'번',x.n+'개',x.c+'개',scoreOf(x.c,x.n)+'%'].forEach(function(v){ tr.appendChild(el('td',null,v)); }); tb.appendChild(tr); });
@@ -372,7 +416,8 @@ function records(){
     else {
       var bw=el('button','btn pri','이 문제들만 다시 풀기'); bw.type='button'; bw.addEventListener('click',function(){ var qs=show.map(function(x){ return x.q; }); start({id:'weak',name:'자주 틀리는 문제',qs:qs},shuffle(qs).slice(0,SIZE),'retry'); });
       var rw=el('div','grow'); rw.appendChild(bw); c4.appendChild(rw);
-      var ul=el('ul','wlist'); show.forEach(function(x){ var li=el('li'); li.appendChild(el('span','wq',x.q.q)); li.appendChild(el('span','wc',x.q.part+' · 틀림 '+x.w+'번 · 맞힘 '+x.c+'번')); ul.appendChild(li); }); c4.appendChild(ul);
+      var ul=el('ul','wlist'); ul.hidden=true; show.forEach(function(x){ var li=el('li'); li.appendChild(el('span','wq',x.q.q)); li.appendChild(el('span','wc',x.q.part+' · 틀림 '+x.w+'번 · 맞힘 '+x.c+'번')); ul.appendChild(li); });
+      var tg=el('button','btn','문제 목록 보기 ('+show.length+'개)'); tg.type='button'; tg.setAttribute('aria-expanded','false'); tg.addEventListener('click',function(){ ul.hidden=!ul.hidden; tg.textContent=(ul.hidden?'문제 목록 보기':'문제 목록 접기')+' ('+show.length+'개)'; tg.setAttribute('aria-expanded',String(!ul.hidden)); }); rw.appendChild(tg); c4.appendChild(ul);
     }
     app.appendChild(c4);
   }
