@@ -568,7 +568,7 @@ function go(id){ if(location.hash==='#'+id) render(); else location.hash=id; }
 function guardedGo(id){ if(G&&!G.done){ confirmBox('진행 중인 풀이를 끝낼까요?','지금까지의 점수는 기록되지 않습니다.','끝내기',function(){ stopGame(); go(id); }); } else { stopGame(); go(id); } }
 function buildTabs(){ tabs.textContent=''; PAGES.slice(0,7).concat(pubGames().length?[['games','게임']]:[]).concat(PAGES.slice(7)).concat(isAdmin()?[['studio','게임 만들기']]:[]).forEach(function(p){ if(p[0]==='quiz'){ tabs.appendChild(quizLink(null,p[1])); return; } var b=btn(null,p[1],function(){ guardedGo(p[0]); }); b.dataset.id=p[0]; tabs.appendChild(b); }); }
 /* 문제 풀이는 기존 문제 풀이 사이트로 넘어간다. 그 사이트가 인증한 기기에는 파트 고르기를, 아니면 카페 인증 안내를 보여 준다. */
-function quizLink(cls,txt){ var a=el('a',cls,txt), m=/[?&]from=(blog|cafe)\b/.exec(location.search); a.href=(PREVIEW?SITE.memberSite:SITE.memberFile)+(m?'?from='+m[1]:''); a.target=PREVIEW?'_blank':'_self'; a.rel='noopener'; return a; }
+function quizLink(cls,txt,hash){ var a=el('a',cls,txt), m=/[?&]from=(blog|cafe)\b/.exec(location.search); a.href=(PREVIEW?SITE.memberSite:SITE.memberFile)+(m?'?from='+m[1]:'')+(hash||''); a.target=PREVIEW?'_blank':'_self'; a.rel='noopener'; return a; }
 /* 헬멧 심벌을 3초 안에 다섯 번 누르면 관리자 확인 화면으로 간다 (화면에는 표시하지 않는다) */
 var brandTaps=[];
 document.getElementById('brand').addEventListener('click',function(){ var now=Date.now(); brandTaps=brandTaps.filter(function(x){ return now-x<3000; }); brandTaps.push(now); if(brandTaps.length>=5){ brandTaps=[]; guardedGo('studio'); } else if(current()!=='home'||G) guardedGo('home'); });
@@ -622,10 +622,11 @@ function home(){
   var s1=el('section','sec'), duo=el('div','duo');
   var a=btn('play',null,function(){ go('terms'); }); a.appendChild(el('span','tag hot','누구나')); a.appendChild(el('b',null,'용어 맞히기')); a.appendChild(el('span','d','설명을 읽고 알맞은 용어를 고릅니다. 용어 '+TERMS.length+'개'));
   var b=quizLink('play b',null); b.appendChild(el('span','tag','카페 회원')); b.appendChild(el('b',null,'문제 풀이')); b.appendChild(el('span','d','파트별 4지선다를 20문제씩 풉니다. 인증한 기기는 파트 고르기로, 처음이면 카페 인증 안내로 넘어갑니다.'));
+  var bx=quizLink('play',null,'#exam'); bx.appendChild(el('span','tag','카페 회원')); bx.appendChild(el('b',null,'실전 모의고사')); bx.appendChild(el('span','d','실제 시험처럼 60문제를 60분 동안 풉니다. 엔진 12, 섀시 20, 전기 20, 안전관리 8문제입니다.'));
   var c1=btn('play b',null,function(){ go('lesson'); }); c1.appendChild(el('span','tag hot','누구나')); c1.appendChild(el('b',null,'교안')); c1.appendChild(el('span','d','범위별 용어 교안을 넘겨 보고, 수업 중에는 반응과 질문을 보냅니다.'));
   var c2=btn('play',null,function(){ go('journey'); }); c2.appendChild(el('span','tag hot','누구나')); c2.appendChild(el('b',null,'내 여정')); c2.appendChild(el('span','d','지나온 정거장을 지도로 보고 한마디를 남깁니다.'));
-  var c3=btn('play b',null,function(){ go('party'); }); c3.style.gridColumn='1 / -1'; c3.appendChild(el('span','tag hot','수업 시간')); c3.appendChild(el('b',null,'함께 풀기')); c3.appendChild(el('span','d','방 코드로 들어와 강사가 내는 문제를 각자 기기에서 풀고 순위를 겨룹니다. 빨리 맞힐수록 점수가 높습니다.'));
-  duo.appendChild(a); duo.appendChild(b); duo.appendChild(c1); duo.appendChild(c2); duo.appendChild(c3); s1.appendChild(duo); app.appendChild(s1);
+  var c3=btn('play b',null,function(){ go('party'); }); c3.appendChild(el('span','tag hot','수업 시간')); c3.appendChild(el('b',null,'함께 풀기')); c3.appendChild(el('span','d','방 코드로 들어와 강사가 내는 문제를 각자 기기에서 풀고 순위를 겨룹니다. 빨리 맞힐수록 점수가 높습니다.'));
+  duo.appendChild(a); duo.appendChild(b); duo.appendChild(bx); duo.appendChild(c1); duo.appendChild(c2); duo.appendChild(c3); s1.appendChild(duo); app.appendChild(s1);
 
   var s2=el('section','sec'), h2=el('h2',null,'공지사항'); h2.appendChild(btn('more','전체 보기',function(){ go('notice'); })); s2.appendChild(h2);
   var c=el('div','card'); c.style.padding='4px 14px';
